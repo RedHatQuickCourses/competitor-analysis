@@ -278,7 +278,7 @@ Open and run the pre-built notebooks:
 2. **Llamastack Test**: `2-llamastack-test-basic.ipynb`
    - Simple test to validate Llamastack setup. Llamastack sends the query to the remote inference end point running on MaaS
    
-2. **Advanced Analysis**: `3-competitor-analysis.ipynb`
+2. **Advanced Analysis**: `3-simple-rag.ipynb`
    - The main notebook demonstrating the solution
 
 ## Customization
