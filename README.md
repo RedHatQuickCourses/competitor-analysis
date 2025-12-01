@@ -2,6 +2,8 @@
 
 This proof-of-concept solution demonstrates an approach to automate competitor analysis workflows using the Red Hat OpenShift AI platform. The solution is mainly focused on banks and financial services companies operating in the Indian subcontinent, but is generic enough to be customized to other industries and use-cases.
 
+> NOTE: This is still a work in progress. Some RAG and agent related features of Llamastack is demonstrated. We are still researching and implementing advanced tool calling and MCP server integration.
+
 ## Problem Statement
 
 To identify competitor strengths, high-growth regions, and potential risks, banks follows a manual data collection and analysis process. Quarterly and half-yearly financial results of peer banks are downloaded from publicly available sources (RBI, NSE, BSE and more). The data is then consolidated into Excel, where analysts normalize classification differences. Once standardized, comparison reports are generated covering multiple parameters. **This process is currently fully manual, repetitive, resource intensive, and consumes significant skilled manpower.**
@@ -283,8 +285,11 @@ Open and run the pre-built notebooks:
 2. **Llamastack Test**: `2-llamastack-test-basic.ipynb`
    - Simple test to validate Llamastack setup. Llamastack sends the query to the remote inference end point running on MaaS
    
-2. **Advanced Analysis**: `3-simple-rag.ipynb`
-   - The main notebook demonstrating the solution
+3. **Simple RAG Pipeline using Llamastack**: `3-simple-rag.ipynb`
+   - A notebook that demonstrates a simple RAG pipeline, where the vector database is queried (similarity search) and the relevant chunks are fed to the LLM as context, along with a system prompt. The LLM responds with a concise summary as response.
+
+4. **Agentic RAG with Llamastack**: `4-agentic-rag.ipynb`
+   - A notebook that demonstrates Llamastack agents. The Agents API provides a high level wrapper around the query and LLM calling workflow and simplifies the RAG process. We also demonstrate how to use the in-built Tavily search agent to respond to queries requiring real-time data fetching.
 
 ## Customization
 
