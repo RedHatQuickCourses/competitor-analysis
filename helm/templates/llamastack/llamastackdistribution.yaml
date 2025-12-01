@@ -49,6 +49,12 @@ spec:
             secretKeyRef:
               name: llama-stack-inference-model-secret
               key: VLLM_API_TOKEN
+        # Tavily Search API configuration
+        - name: TAVILY_SEARCH_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llama-stack-tavily-secret
+              key: TAVILY_SEARCH_API_KEY
         # Milvus configuration from secret
         - name: MILVUS_ENDPOINT
           valueFrom:

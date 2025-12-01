@@ -161,6 +161,7 @@ helm install competitor-analysis ./helm \
   --namespace competitor-analysis \
   --create-namespace \
   --set llamastack.vllm.apiToken=<YOUR_MaaS_API_TOKEN> \
+  --set llamastack.tavily.apiKey=<YOUR_TAVILY_API_KEY> \
   --set clusterDomainUrl=apps.<YOUR-CLUSTER-DOMAIN.com> \
   --wait \
   --timeout 20m

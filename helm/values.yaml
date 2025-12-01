@@ -182,6 +182,10 @@ llamastack:
     tlsVerify: "false"
     apiToken: ""  # Set via --set or external secret
   
+  # Tavily Search API configuration
+  tavily:
+    apiKey: ""  # Set via --set or external secret
+  
   # Service configuration
   service:
     type: ClusterIP

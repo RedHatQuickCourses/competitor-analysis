@@ -67,6 +67,12 @@ spec:
                 secretKeyRef:
                   name: llama-stack-inference-model-secret
                   key: INFERENCE_MODEL
+            # Tavily Search API credentials from secret
+            - name: TAVILY_SEARCH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llama-stack-tavily-secret
+                  key: TAVILY_SEARCH_API_KEY
             {{- if .Values.notebook.env }}
             {{- range .Values.notebook.env }}
             - name: {{ .name }}
