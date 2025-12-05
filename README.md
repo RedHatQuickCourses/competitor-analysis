@@ -2,7 +2,7 @@
 
 This proof-of-concept solution demonstrates an approach to automate competitor analysis workflows using the Red Hat OpenShift AI platform. The solution is mainly focused on banks and financial services companies operating in the Indian subcontinent, but is generic enough to be customized to other industries and use-cases.
 
-> NOTE: This is still a work in progress. Some RAG and agent related features of Llamastack is demonstrated. We are still researching and implementing advanced tool calling and MCP server integration.
+> NOTE: This is still a work in progress. Some RAG, vector databases, real-time search, custom tool calling, and reactive agent related features of Llamastack are demonstrated. We are still researching and implementing advanced agentic workflows, and MCP server integration.
 
 ## Problem Statement
 
@@ -17,11 +17,11 @@ The solution explores possible ways to automate this workflow and increase the s
 - Prasad Mukhedkar
 - Varun Raste
 - Ravi Srinivasan
-- The Red Hat AI BU Team
+- The Red Hat AI BU Team (Adel Zaalouk et al.)
 
 ## Technical Overview
 
-This project provides an end-to-end solution for ingesting financial documents (PDFs), converting them to embeddings, storing them in a vector database, and enabling semantic search through Jupyter notebooks. The entire stack is deployed as a single Helm chart with automated setup and configuration.
+This project provides an end-to-end solution for ingesting financial documents (PDFs), converting them to embeddings, storing them in a vector database, and enabling semantic search through Jupyter notebooks. The entire stack is deployed as a Helm chart with automated setup and configuration.
 
 ### Architecture
 
@@ -30,9 +30,9 @@ This project provides an end-to-end solution for ingesting financial documents (
 ### Technology Stack
 
 * Models as a Service (MaaS) for remote inference
-* RHOAI 2.25 latest (To be updated to 3.0 at GA)
+* RHOAI 2.25 latest (To be updated to 3.0 soon - ETA Q1 FY2026)
 * Milvus Vector DB
-* LlamaStack
+* LlamaStack v0.2.22
 * MinIO (for storing PDFs) S3 compatible storage
 * OCP 4.18+, or whatever is LTS
 * Docling for PDF parsing
@@ -279,17 +279,14 @@ Your workbench will open with the GitHub repository pre-cloned at:
 
 Open and run the pre-built notebooks:
 
-1. **MaaS Test**: `1-maas-test.ipynb`
-   - Simple test to validate inference using models hosted on MaaS
-  
-2. **Llamastack Test**: `2-llamastack-test-basic.ipynb`
-   - Simple test to validate Llamastack setup. Llamastack sends the query to the remote inference end point running on MaaS
-   
-3. **Simple RAG Pipeline using Llamastack**: `3-simple-rag.ipynb`
-   - A notebook that demonstrates a simple RAG pipeline, where the vector database is queried (similarity search) and the relevant chunks are fed to the LLM as context, along with a system prompt. The LLM responds with a concise summary as response.
-
-4. **Agentic RAG with Llamastack**: `4-agentic-rag.ipynb`
-   - A notebook that demonstrates Llamastack agents. The Agents API provides a high level wrapper around the query and LLM calling workflow and simplifies the RAG process. We also demonstrate how to use the in-built Tavily search agent to respond to queries requiring real-time data fetching.
+| Name | Description |
+| :--- | :--- |
+| 1-maas-test | Basic Testing of MaaS remote inference |
+| 2-llamastack-test-basic | Basic Testing of Llamastack server set up. Llamastack sends the query to the remote inference end point running on MaaS |
+| 3-simple-rag | A notebook that demonstrates a simple RAG pipeline, where the vector database is queried (similarity search) and the relevant chunks are fed to the LLM as context, along with a system prompt. The LLM responds with a concise summary as response. |
+| 4-agentic-rag | A notebook that demonstrates Llamastack agents. The Agents API provides a high level wrapper around the query and LLM calling workflow and simplifies the RAG process. |
+| 5-real-time-search| We demonstrate how to use the in-built Tavily search agent to respond to queries requiring real-time data fetching. |
+| 6-react-agent | Llamastack ReAct Agent with multi-tool workflow (Yahoo finance tool calling) |
 
 ## Customization
 

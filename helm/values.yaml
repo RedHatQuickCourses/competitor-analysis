@@ -337,18 +337,20 @@ notebook:
   # Available images: s2i-minimal-notebook, jupyter-datascience-cpu-py312-ubi9,
   #                   jupyter-minimal-cpu-py312-ubi9, jupyter-pytorch-cuda-py312-ubi9
   image:
-    repository: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-minimal-notebook
+    repository: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/minimal-gpu
     tag: "2025.2"
     pullPolicy: IfNotPresent
   
   # Resource limits (adjust based on your workload)
   resources:
     requests:
-      cpu: "1"
-      memory: 2Gi
+      cpu: "3"
+      memory: 24Gi
+      nvidia.com/gpu: "1"
     limits:
-      cpu: "2"
-      memory: 4Gi
+      cpu: "6"
+      memory: 24Gi
+      nvidia.com/gpu: "1"
   
   # GitHub repository to clone into workbench
   # This will be automatically cloned after the workbench starts
