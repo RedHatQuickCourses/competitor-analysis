@@ -335,21 +335,27 @@ notebook:
   # Notebook image
   # Using internal OpenShift image registry (pre-pulled by RHOAI)
   # Available images: s2i-minimal-notebook, jupyter-datascience-cpu-py312-ubi9,
-  #                   jupyter-minimal-cpu-py312-ubi9, jupyter-pytorch-cuda-py312-ubi9
+  #                   jupyter-minimal-cpu-py312-ubi9, jupyter-pytorch-cuda-py312-ubi9, minimal-gpu
   image:
     repository: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/minimal-gpu
     tag: "2025.2"
     pullPolicy: IfNotPresent
+    # ImageStream metadata for RHOAI dashboard display
+    # These must match the ImageStream in redhat-ods-applications namespace
+    imageStreamName: minimal-gpu  # Short name of the ImageStream
+    gitCommit: d3137ca            # From imagestream tag annotation: opendatahub.io/notebook-build-commit
+    displayName: "Jupyter | GPU | CUDA | Python 3.12"  # Human-readable name for dashboard
   
   # Resource limits (adjust based on your workload)
+  # NOTE: Using MaaS for remote inference, so modest resources are sufficient
   resources:
     requests:
-      cpu: "3"
-      memory: 24Gi
+      cpu: "2"
+      memory: 8Gi
       nvidia.com/gpu: "1"
     limits:
-      cpu: "6"
-      memory: 24Gi
+      cpu: "4"
+      memory: 16Gi
       nvidia.com/gpu: "1"
   
   # GitHub repository to clone into workbench

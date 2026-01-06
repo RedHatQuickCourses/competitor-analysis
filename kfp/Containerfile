@@ -43,7 +43,7 @@ RUN pip install --no-cache-dir \
     minio==7.2.18 \
     docling==2.61.2 \
     pytesseract==0.3.13 \
-    llama-stack-client==0.2.22
+    llama-stack-client==0.3.0
 
 # Make /usr/local group-writable for OpenShift compatibility
 # This allows the non-root user (GID 0) to:
@@ -90,5 +90,5 @@ LABEL name="kfp-docling-embedding" \
       base-image="python:3.12-slim-bookworm" \
       ocr-engine="rapidocr-torch" \
       ocr-model="PP-OCRv4" \
-      embedding-client="llama-stack-client-0.2.22"
+      embedding-client="llama-stack-client-0.3.0"
 

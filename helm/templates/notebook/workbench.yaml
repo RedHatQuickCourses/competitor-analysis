@@ -10,9 +10,10 @@ metadata:
     app.kubernetes.io/component: notebook
     opendatahub.io/dashboard: "true"
   annotations:
-    notebooks.opendatahub.io/inject-oauth: "true"
-    notebooks.opendatahub.io/last-image-selection: '{{ .Values.notebook.image.repository }}:{{ .Values.notebook.image.tag }}'
-    opendatahub.io/image-display-name: 'Jupyter Data Science | Python 3.11'
+    notebooks.opendatahub.io/inject-auth: "true"
+    notebooks.opendatahub.io/last-image-selection: '{{ .Values.notebook.image.imageStreamName }}:{{ .Values.notebook.image.tag }}'
+    notebooks.opendatahub.io/last-image-version-git-commit-selection: '{{ .Values.notebook.image.gitCommit }}'
+    opendatahub.io/image-display-name: '{{ .Values.notebook.image.displayName }}'
   {{- with .Values.commonAnnotations }}
     {{- toYaml . | nindent 4 }}
   {{- end }}

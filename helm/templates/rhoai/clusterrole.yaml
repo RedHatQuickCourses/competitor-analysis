@@ -1,4 +1,4 @@
-{{- if .Values.rhoai.enableLlamaStackOperator.enabled }}
+{{- if or .Values.rhoai.enableLlamaStackOperator.enabled .Values.notebook.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -8,7 +8,7 @@ metadata:
   annotations:
     # Helm hook to create this before installation
     helm.sh/hook: pre-install,pre-upgrade
-    helm.sh/hook-weight: "-5"
+    helm.sh/hook-weight: "-15"  # Run before cleanup job (-10) and DSC patcher (0)
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 rules:
   # Permission to get and patch DataScienceCluster resources
@@ -19,5 +19,22 @@ rules:
     verbs:
       - get
       - patch
+  # Permission to list and delete InferenceServices (for GPU cleanup)
+  - apiGroups:
+      - serving.kserve.io
+    resources:
+      - inferenceservices
+    verbs:
+      - get
+      - list
+      - delete
+  # Permission to list pods (for checking GPU usage)
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
 {{- end }}
 

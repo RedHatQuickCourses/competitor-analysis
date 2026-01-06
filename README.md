@@ -30,11 +30,11 @@ This project provides an end-to-end solution for ingesting financial documents (
 ### Technology Stack
 
 * Models as a Service (MaaS) for remote inference
-* RHOAI 2.25 latest (To be updated to 3.0 soon - ETA Q1 FY2026)
+* RHOAI 3.0 latest
 * Milvus Vector DB
-* LlamaStack v0.2.22
+* LlamaStack v0.3
 * MinIO (for storing PDFs) S3 compatible storage
-* OCP 4.18+, or whatever is LTS
+* OCP 4.20+, or whatever is LTS
 * Docling for PDF parsing
 * KubeFlow Pipelines (KFP) for automated data gathering
 * Jupyter Notebooks for UI, hosted on RHOAI
@@ -68,28 +68,22 @@ Before you install the helm chart, ensure you have the following prerequisites i
 
 ### Provision RHOAI Cluster
 
-Log in to the Red Hat Demo Platform (RHDP) and order this catalog item which contains a pre-installed RHOAI 2.22 on AWS - [RHOAI on OCP on AWS with NVIDIA GPUs](https://catalog.demo.redhat.com/catalog?item=babylon-catalog-prod/sandboxes-gpte.ocp4-demo-rhods-nvidia-gpu-aws.prod&utm_source=webapp&utm_medium=share-link)
+Log in to the Red Hat Demo Platform (RHDP) and order this catalog item which contains a pre-installed RHOAI 3.0 cluster - [Red Hat Openshift AI 3.0](https://catalog.demo.redhat.com/catalog?item=babylon-catalog-prod/published.openshift-ai-v3.prod&utm_source=webapp&utm_medium=share-link)
 
 * Select “Practice/Enablement” and “Trying out a technical solution”
-* Ensure that “Enable Cert Manager” and “Enable OPEN Environment” are selected
-* Leave the AWS Region at default value (It populates based on availability of GPUs)
-* **IMPORTANT**: For “GPU Selection by Node Type” select `g6.4xlarge`
+* **IMPORTANT**: For “GPU Selection by Node Type” select `g6.8xlarge`
 * Adjust the auto-stop and auto-destroy dates as per your needs, select the checkbox at the bottom of the instructions section, and click Order.
 * It will take approximately 90-120 minutes for the cluster to fully provision. You will get an email once it is provisioned, with all the details needed to access the OpenShift cluster.
 
-You can also use your own custom OpenShift cluster and install the RHOAI 2.25 operator and its pre-requisites by following the product documentation. You will need cluster admin rights to run the hands-on lab instructions. HW sizing recommended:
+You can also use your own custom OpenShift cluster and install the RHOAI 3.0 operator and its pre-requisites by following the product documentation. You will need cluster admin rights to run the hands-on lab instructions. HW sizing options to match the tested configuration:
 
-* 3 Control plane nodes (m6a.2xlarge)
-	* CPU Cores - 8
-	* Memory - 32GB
-	* Disk - 100GB
-* (Optional) 1 GPU worker node - GPU required for main inference LLM NVIDIA GPU with 24GiB vRAM (equivalent to g6.4xlarge on AWS)
-* 2 worker nodes for non-GPU workloads (m6a.4xlarge)
-	* CPU cores: 16
-	* Memory: 64GB
-	* Storage: 100Gi
+* Single Node OpenShift (SNO) (AWS g6.4xlarge) or equivalent
+	* CPU Cores - 32
+	* Memory - 128GB
+	* Disk - 200GB
+  * 1 GPU (24GB VRAM) for running GPU accelerated notebooks
 
-> **NOTE**: GPU node is not mandatory. You only need it if you want to serve models within the RHOAI cluster. The solution uses Models as a Service (MaaS) by default, which provides a convienient remote inference end point (mimicking ChatGPT or Claude remote API access using API keys).
+> **NOTE**: The solution uses Models as a Service (MaaS) by default, which provides a convienient remote inference end point (mimicking ChatGPT or Claude remote API access using API keys).
 
 While the cluster is provisioning, we can go ahead and create an account at the MaaS portal to prepare our remote inference end point.
 
@@ -122,24 +116,10 @@ MaaS offers OpenAI compatible end points, so your application code is not impact
 
 After the RHOAI cluster is provisioned and running, and assuming you have registered with MaaS to get the api key for remote inferencing, do the following:
 
-### Upgrade the OpenShift Cluster to v2.25
+### Verify RHOAI v3.0 Installation
 
-> **NOTE**: You need to ensure your RHOAI version is at least 2.25. Ignore these steps if your installed RHOAI operator version is >=2.25.
-
-* After provisioning your RHDP catalog item, you must have received an email with your credentials to access the OpenShift cluster as an administrator. This cluster comes with RHOAI 2.22 pre-installed.
-* Navigate to the OpenShift web console URL and log in as the **admin** user.
-* In the `Administrator` perspective, click on `Compute > Nodes`, and confirm that you have 3 control plane nodes, and three worker nodes (with one node having a GPU attached)
-* Click on `Operators > Installed Operators` and verify that the RHOAI operator and its dependencies are installed and in Succeeded state.
-* We need to ensure we are working with the latest stable version of RHOAI. Click the Red Hat OpenShift AI operator, and then click the `Subscription` tab.
-
-![Upgrade RHOAI Operator](op-upgrade.png)
-
-* Click the pencil icon below the `Update channel` label. You will see a pop-up listing all the available versions of the RHOAI operator. You need to select the **latest stable version** (which is 2.25 at the time of writing this article), and click `Save`.
-* Click on **Operator > Installed Operators** and notice that the RHOAI operator is being updated. Wait until you see a `Succeeded` message in the `Status` column.
-* Click on the Red Hat OpenShift AI operator and scroll to the bottom of the Details tab to see the messages from the update process. Verify that you can see the InstallSucceeded message with no errors.
 * In the OpenShift web console, open the Red Hat OpenShift AI dashboard by clicking on the Red Hat Application icon (little squares in the top right corner), and log in as the **admin** user with the same credentials you used for logging into the OpenShift cluster.
 * Once the RHOAI dashboard loads, click the question mark (?) icon in the top right navigation bar and verify that the latest stable version of RHOAI is displayed, along with the latest versions of the components in RHOAI.
-
 
 ### Get Your Cluster Domain
 
@@ -159,7 +139,7 @@ We will use the Tavily search service to do a websearch from a Llamastack Agent.
 
 ```bash
 # Clone this repository
-git clone https://github.com/rsriniva/competitor-analysis.git
+git clone https://github.com/RedHatQuickCourses/competitor-analysis.git
 cd competitor-analysis
 
 # Install with minimal configuration
@@ -227,7 +207,7 @@ Login with your OpenShift credentials.
 
 ```bash
 # Get Minio Console URL
-echo "https://minio-ui-competitor-analysis.$(oc get route -n competitor-analysis minio-ui -o jsonpath='{.spec.host}')"
+echo "https://$(oc get route -n competitor-analysis minio-ui -o jsonpath='{.spec.host}')"
 ```
 
 1. Open the URL in your browser
@@ -253,6 +233,7 @@ echo "https://minio-ui-competitor-analysis.$(oc get route -n competitor-analysis
 1. Navigate to **Pipelines** → **Runs** → **Create run**
 2. Select pipeline: `document-ingestion-pipeline`
 3. Fill in parameters:
+   - `Name`: `run1` (or any identifier for this run)
    - `run_id`: `v1` (or any identifier for this run)
    - `minio_secret_name`: `minio-secret` (default)
    - `pipeline_configmap_name`: `pipeline-config` (default)
@@ -261,8 +242,8 @@ echo "https://minio-ui-competitor-analysis.$(oc get route -n competitor-analysis
 **Expected duration**: 5-15 minutes (depends on number of documents)
 
 Monitor progress in the **Runs** page. Pipeline stages:
-- Convert PDFs to markdown, chunk and embed documents
-- Store embeddings in Milvus
+- **convert** - Convert PDFs to markdown, chunk and embed documents
+- **embed** - Store embeddings in Milvus
 
 ### Step 5: Query Documents with Jupyter Notebooks
 

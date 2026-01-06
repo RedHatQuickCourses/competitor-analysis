@@ -1,0 +1,124 @@
+{{- if .Values.notebook.enabled }}
+{{- if .Values.notebook.resources.requests }}
+{{- if index .Values.notebook.resources.requests "nvidia.com/gpu" }}
+# ==============================================================================
+# GPU Cleanup Job
+# ==============================================================================
+# This job runs before helm install/upgrade to clean up any existing 
+# InferenceServices that might be consuming GPU resources.
+# This ensures the GPU is available for the competitor-analysis workbench.
+# ==============================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "competitor-analysis.fullname" . }}-gpu-cleanup-{{ .Release.Revision }}
+  namespace: {{ include "competitor-analysis.namespace" . }}
+  labels:
+    {{- include "competitor-analysis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gpu-cleanup
+  annotations:
+    # Helm hook: runs before installing/upgrading any other resources
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"  # Run before DSC patcher (weight 0)
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300  # Clean up job after 5 minutes
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "competitor-analysis.labels" . | nindent 8 }}
+        app.kubernetes.io/component: gpu-cleanup
+    spec:
+      serviceAccountName: {{ include "competitor-analysis.fullname" . }}-dsc-patcher
+      restartPolicy: OnFailure
+      containers:
+        - name: cleanup-gpu-workloads
+          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "=================================================="
+              echo "GPU Cleanup: Removing InferenceServices using GPU"
+              echo "=================================================="
+              echo ""
+              
+              # Get all InferenceServices across all namespaces
+              echo "Scanning for InferenceServices..."
+              ISVC_LIST=$(oc get inferenceservices -A -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}' 2>/dev/null || echo "")
+              
+              if [ -z "$ISVC_LIST" ]; then
+                echo "[OK] No InferenceServices found. GPU should be available."
+                exit 0
+              fi
+              
+              echo "Found InferenceServices:"
+              echo "$ISVC_LIST"
+              echo ""
+              
+              # Delete each InferenceService
+              DELETED=0
+              FAILED=0
+              
+              for ISVC in $ISVC_LIST; do
+                NAMESPACE=$(echo $ISVC | cut -d'/' -f1)
+                NAME=$(echo $ISVC | cut -d'/' -f2)
+                
+                # Skip if in our own namespace (shouldn't happen, but be safe)
+                if [ "$NAMESPACE" = "{{ include "competitor-analysis.namespace" . }}" ]; then
+                  echo "[SKIP] Skipping $ISVC (our namespace)"
+                  continue
+                fi
+                
+                echo "Deleting InferenceService: $NAMESPACE/$NAME"
+                if oc delete inferenceservice "$NAME" -n "$NAMESPACE" --wait=false 2>/dev/null; then
+                  echo "  [OK] Deleted"
+                  DELETED=$((DELETED + 1))
+                else
+                  echo "  [WARN] Failed to delete (may not exist or permission denied)"
+                  FAILED=$((FAILED + 1))
+                fi
+              done
+              
+              echo ""
+              echo "=================================================="
+              echo "GPU Cleanup Summary"
+              echo "=================================================="
+              echo "InferenceServices deleted: $DELETED"
+              echo "Failed/Skipped: $FAILED"
+              echo ""
+              
+              # Wait for pods to terminate
+              if [ $DELETED -gt 0 ]; then
+                echo "Waiting for GPU pods to terminate..."
+                sleep 10
+                
+                # Check if GPU is now available
+                GPU_PODS=$(oc get pods -A -o json 2>/dev/null | \
+                  jq -r '.items[] | select(.spec.containers[].resources.requests."nvidia.com/gpu" != null) | select(.status.phase == "Running") | "\(.metadata.namespace)/\(.metadata.name)"' 2>/dev/null || echo "")
+                
+                if [ -z "$GPU_PODS" ]; then
+                  echo "[OK] GPU should now be available!"
+                else
+                  echo "[INFO] Some GPU pods still running:"
+                  echo "$GPU_PODS"
+                  echo "(They may still be terminating)"
+                fi
+              fi
+              
+              echo ""
+              echo "[OK] GPU cleanup completed"
+              echo "=================================================="
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+{{- end }}
+{{- end }}
+{{- end }}
+

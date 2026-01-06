@@ -11,8 +11,8 @@ kfp-kubernetes
 docling
 
 # Llamastack Client - embeddings generation and Milvus operations
-# Version pinned to match server version 0.2.22
-llama-stack-client==0.2.22
+# Version pinned to match server version 0.3.0
+llama-stack-client==0.3.0
 
 # Minio - S3 object storage client
 minio

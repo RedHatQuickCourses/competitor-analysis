@@ -23,12 +23,13 @@ from component_embed import generate_embeddings_and_store
 def document_ingestion_pipeline(
     minio_secret_name: str = "minio-secret",
     pipeline_configmap_name: str = "pipeline-config",
-    run_id: str = "v1"
+    run_id: str = "v1",
+    skip_pdf_conversion: bool = False
 ):
     """
     Two-stage document ingestion pipeline.
     
-    Stage 1: PDF Conversion
+    Stage 1: PDF Conversion (can be skipped if Markdown already exists)
       - Downloads PDFs from Minio input bucket
       - Converts to Markdown using Docling
       - Uploads to Minio intermediate bucket
@@ -42,40 +43,44 @@ def document_ingestion_pipeline(
         minio_secret_name: Kubernetes secret containing Minio credentials
         pipeline_configmap_name: Kubernetes ConfigMap with pipeline configuration
         run_id: Version identifier to force fresh execution (bypasses cache)
+        skip_pdf_conversion: If True, skip PDF conversion and run only embedding generation
     """
     
     # ========================================
-    # Component 1: Convert PDFs to Markdown
+    # Component 1: Convert PDFs to Markdown (conditional)
     # ========================================
-    convert_task = convert_pdfs_to_markdown(run_id=run_id)
-    
-    # Inject Minio credentials from Secret
-    kubernetes.use_secret_as_env(
-        task=convert_task,
-        secret_name=minio_secret_name,
-        secret_key_to_env={
-            'minio_root_user': 'MINIO_ACCESS_KEY',
-            'minio_root_password': 'MINIO_SECRET_KEY'
-        }
-    )
-    
-    # Inject configuration from ConfigMap
-    kubernetes.use_config_map_as_env(
-        task=convert_task,
-        config_map_name=pipeline_configmap_name,
-        config_map_key_to_env={
-            'minio_endpoint': 'MINIO_ENDPOINT',
-            'minio_secure': 'MINIO_SECURE',
-            'input_docs_bucket': 'INPUT_DOCS_BUCKET',
-            'markdown_docs_bucket': 'MARKDOWN_DOCS_BUCKET',
-            'markdown_docs_prefix': 'MARKDOWN_DOCS_PREFIX',
-        }
-    )
+    with dsl.If(skip_pdf_conversion == False, name="run-pdf-conversion"):
+        convert_task = convert_pdfs_to_markdown(run_id=run_id)
+        kubernetes.set_image_pull_policy(convert_task, "Always")  # Force pull latest image
+        
+        # Inject Minio credentials from Secret
+        kubernetes.use_secret_as_env(
+            task=convert_task,
+            secret_name=minio_secret_name,
+            secret_key_to_env={
+                'minio_root_user': 'MINIO_ACCESS_KEY',
+                'minio_root_password': 'MINIO_SECRET_KEY'
+            }
+        )
+        
+        # Inject configuration from ConfigMap
+        kubernetes.use_config_map_as_env(
+            task=convert_task,
+            config_map_name=pipeline_configmap_name,
+            config_map_key_to_env={
+                'minio_endpoint': 'MINIO_ENDPOINT',
+                'minio_secure': 'MINIO_SECURE',
+                'input_docs_bucket': 'INPUT_DOCS_BUCKET',
+                'markdown_docs_bucket': 'MARKDOWN_DOCS_BUCKET',
+                'markdown_docs_prefix': 'MARKDOWN_DOCS_PREFIX',
+            }
+        )
     
     # ========================================
-    # Component 2: Generate Embeddings
+    # Component 2: Generate Embeddings (always runs)
     # ========================================
     embed_task = generate_embeddings_and_store(run_id=run_id)
+    kubernetes.set_image_pull_policy(embed_task, "Always")  # Force pull latest image
     
     # Inject Minio credentials from Secret
     kubernetes.use_secret_as_env(
@@ -101,9 +106,6 @@ def document_ingestion_pipeline(
             'chunk_size_in_tokens': 'CHUNK_SIZE_IN_TOKENS',
         }
     )
-    
-    # Ensure component 2 runs after component 1 completes
-    embed_task.after(convert_task)
 
 
 if __name__ == "__main__":
@@ -147,6 +149,7 @@ if __name__ == "__main__":
     print(f"   - minio_secret_name: minio-secret (default)")
     print(f"   - pipeline_configmap_name: pipeline-config (default)")
     print(f"   - run_id: v1 (change to v2, v3... to bypass cache)")
+    print(f"   - skip_pdf_conversion: false (set to true to skip PDF conversion)")
     print(f"5. Click 'Run'")
     print(f"")
     print(f"All configuration comes from ConfigMap 'pipeline-config':")

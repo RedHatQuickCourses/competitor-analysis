@@ -5,7 +5,28 @@
 #    minio_secret_name: str [Default: 'minio-secret']
 #    pipeline_configmap_name: str [Default: 'pipeline-config']
 #    run_id: str [Default: 'v1']
+#    skip_pdf_conversion: bool [Default: False]
 components:
+  comp-condition-1:
+    dag:
+      tasks:
+        convert-pdfs-to-markdown:
+          cachingOptions:
+            enableCache: true
+          componentRef:
+            name: comp-convert-pdfs-to-markdown
+          inputs:
+            parameters:
+              run_id:
+                componentInputParameter: pipelinechannel--run_id
+          taskInfo:
+            name: convert-pdfs-to-markdown
+    inputDefinitions:
+      parameters:
+        pipelinechannel--run_id:
+          parameterType: STRING
+        pipelinechannel--skip_pdf_conversion:
+          parameterType: BOOLEAN
   comp-convert-pdfs-to-markdown:
     executorLabel: exec-convert-pdfs-to-markdown
     inputDefinitions:
@@ -38,7 +59,7 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.6'\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
         - sh
@@ -143,7 +164,7 @@ deploymentSpec:
         - -c
         - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
           \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
-          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.14.6'\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.15.2'\
           \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
           $0\" \"$@\"\n"
         - sh
@@ -196,31 +217,41 @@ deploymentSpec:
           )\n\n        embedding_model_id = embedding_model.identifier\n        embedding_dimension\
           \ = embedding_model.metadata.get(\"embedding_dimension\", 768)\n       \
           \ print(f\"[OK] Embedding model: {embedding_model_id} (dimension: {embedding_dimension})\"\
-          )\n\n        # Step 2: Register/find vector database\n        print(f\"\\\
-          n{'=' * 70}\")\n        print(\"STEP 2: SETUP VECTOR DATABASE\")\n     \
-          \   print(\"=\" * 70)\n\n        actual_vector_db_id = None\n\n        try:\n\
-          \            # Check if vector DB already exists\n            existing_dbs\
-          \ = llama_client.vector_dbs.list()\n            for db in existing_dbs:\n\
-          \                if db.identifier == vector_db_id or getattr(db, 'vector_db_name',\
-          \ None) == vector_db_id:\n                    actual_vector_db_id = db.identifier\n\
-          \                    print(f\"[OK] Found existing vector DB: {vector_db_id}\"\
-          )\n                    print(f\"    Using identifier: {actual_vector_db_id}\"\
-          )\n                    break\n\n            if not actual_vector_db_id:\n\
-          \                # Register new vector DB\n                print(f\"[INFO]\
-          \ Registering new vector DB: {vector_db_id}\")\n\n                vector_db\
-          \ = llama_client.vector_dbs.register(\n                    vector_db_id=vector_db_id,\n\
-          \                    embedding_model=embedding_model_id,\n             \
-          \       embedding_dimension=embedding_dimension,\n                    provider_id=\"\
-          milvus-remote\"\n                )\n                actual_vector_db_id\
-          \ = vector_db.identifier\n                print(f\"[OK] Registered vector\
-          \ DB: {actual_vector_db_id}\")\n\n        except Exception as e:\n     \
-          \       print(f\"[ERROR] Vector DB setup failed: {str(e)}\", file=sys.stderr)\n\
-          \            raise\n\n        print(f\"\\n[OK] Vector DB ready: {actual_vector_db_id}\"\
-          )\n        print(f\"    Embedding model: {embedding_model_id}\")\n     \
-          \   print(f\"    Dimensions: {embedding_dimension}\")\n\n        # Step\
-          \ 3: Download Markdown files from Minio\n        print(f\"\\n{'=' * 70}\"\
-          )\n        print(\"STEP 3: DOWNLOAD MARKDOWN FILES\")\n        print(\"\
-          =\" * 70)\n\n        if not minio_client.bucket_exists(markdown_bucket):\n\
+          )\n\n        # Step 2: Register/find vector database\n        # NOTE: In\
+          \ llama-stack-client 0.3.0, vector_dbs was renamed to vector_stores\n  \
+          \      print(f\"\\n{'=' * 70}\")\n        print(\"STEP 2: SETUP VECTOR DATABASE\"\
+          )\n        print(\"=\" * 70)\n\n        actual_vector_db_id = None\n\n \
+          \       try:\n            # Check if vector store already exists (API changed\
+          \ in 0.3.0)\n            print(f\"[INFO] Checking for existing vector stores...\"\
+          )\n            existing_stores = llama_client.vector_stores.list()\n\n \
+          \           # Handle pagination - vector_stores.list() returns a cursor\
+          \ page\n            for store in existing_stores:\n                store_id\
+          \ = getattr(store, 'id', None) or getattr(store, 'identifier', None)\n \
+          \               store_name = getattr(store, 'name', None)\n            \
+          \    print(f\"  Found: {store_id} (name={store_name})\")\n             \
+          \   if store_id == vector_db_id or store_name == vector_db_id:\n       \
+          \             actual_vector_db_id = store_id\n                    print(f\"\
+          [OK] Found existing vector store: {vector_db_id}\")\n                  \
+          \  print(f\"    Using ID: {actual_vector_db_id}\")\n                   \
+          \ break\n\n            if not actual_vector_db_id:\n                # Create\
+          \ new vector store (API changed in 0.3.0)\n                print(f\"[INFO]\
+          \ Creating new vector store: {vector_db_id}\")\n\n                vector_store\
+          \ = llama_client.vector_stores.create(\n                    name=vector_db_id,\n\
+          \                    metadata={\n                        \"embedding_model\"\
+          : embedding_model_id,\n                        \"embedding_dimension\":\
+          \ embedding_dimension,\n                        \"provider\": \"milvus\"\
+          \n                    }\n                )\n                actual_vector_db_id\
+          \ = vector_store.id\n                print(f\"[OK] Created vector store:\
+          \ {actual_vector_db_id}\")\n\n        except Exception as e:\n         \
+          \   print(f\"[ERROR] Vector store setup failed: {str(e)}\", file=sys.stderr)\n\
+          \            # Try using vector_db_id directly - it might be pre-configured\n\
+          \            print(f\"[INFO] Attempting to use vector_db_id directly: {vector_db_id}\"\
+          )\n            actual_vector_db_id = vector_db_id\n\n        print(f\"\\\
+          n[OK] Vector DB ready: {actual_vector_db_id}\")\n        print(f\"    Embedding\
+          \ model: {embedding_model_id}\")\n        print(f\"    Dimensions: {embedding_dimension}\"\
+          )\n\n        # Step 3: Download Markdown files from Minio\n        print(f\"\
+          \\n{'=' * 70}\")\n        print(\"STEP 3: DOWNLOAD MARKDOWN FILES\")\n \
+          \       print(\"=\" * 70)\n\n        if not minio_client.bucket_exists(markdown_bucket):\n\
           \            raise ValueError(f\"Markdown bucket '{markdown_bucket}' does\
           \ not exist!\")\n\n        objects = minio_client.list_objects(markdown_bucket,\
           \ prefix=markdown_prefix, recursive=True)\n        markdown_files = []\n\
@@ -278,24 +309,25 @@ pipelineInfo:
 root:
   dag:
     tasks:
-      convert-pdfs-to-markdown:
-        cachingOptions:
-          enableCache: true
+      condition-1:
         componentRef:
-          name: comp-convert-pdfs-to-markdown
+          name: comp-condition-1
         inputs:
           parameters:
-            run_id:
+            pipelinechannel--run_id:
               componentInputParameter: run_id
+            pipelinechannel--skip_pdf_conversion:
+              componentInputParameter: skip_pdf_conversion
         taskInfo:
-          name: convert-pdfs-to-markdown
+          name: run-pdf-conversion
+        triggerPolicy:
+          condition: inputs.parameter_values['pipelinechannel--skip_pdf_conversion']
+            == false
       generate-embeddings-and-store:
         cachingOptions:
           enableCache: true
         componentRef:
           name: comp-generate-embeddings-and-store
-        dependentTasks:
-        - convert-pdfs-to-markdown
         inputs:
           parameters:
             run_id:
@@ -319,8 +351,13 @@ root:
         description: Version identifier to force fresh execution (bypasses cache)
         isOptional: true
         parameterType: STRING
+      skip_pdf_conversion:
+        defaultValue: false
+        description: If True, skip PDF conversion and run only embedding generation
+        isOptional: true
+        parameterType: BOOLEAN
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.14.6
+sdkVersion: kfp-2.15.2
 ---
 platforms:
   kubernetes:
@@ -341,12 +378,15 @@ platforms:
               envVar: MARKDOWN_DOCS_BUCKET
             - configMapKey: markdown_docs_prefix
               envVar: MARKDOWN_DOCS_PREFIX
+            optional: false
+          imagePullPolicy: Always
           secretAsEnv:
           - keyToEnv:
             - envVar: MINIO_ACCESS_KEY
               secretKey: minio_root_user
             - envVar: MINIO_SECRET_KEY
               secretKey: minio_root_password
+            optional: false
             secretNameParameter:
               componentInputParameter: minio_secret_name
         exec-generate-embeddings-and-store:
@@ -368,11 +408,14 @@ platforms:
               envVar: VECTOR_DB_ID
             - configMapKey: chunk_size_in_tokens
               envVar: CHUNK_SIZE_IN_TOKENS
+            optional: false
+          imagePullPolicy: Always
           secretAsEnv:
           - keyToEnv:
             - envVar: MINIO_ACCESS_KEY
               secretKey: minio_root_user
             - envVar: MINIO_SECRET_KEY
               secretKey: minio_root_password
+            optional: false
             secretNameParameter:
               componentInputParameter: minio_secret_name

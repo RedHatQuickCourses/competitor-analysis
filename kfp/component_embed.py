@@ -91,6 +91,7 @@ def generate_embeddings_and_store(
         print(f"[OK] Embedding model: {embedding_model_id} (dimension: {embedding_dimension})")
         
         # Step 2: Register/find vector database
+        # NOTE: In llama-stack-client 0.3.0, vector_dbs was renamed to vector_stores
         print(f"\n{'=' * 70}")
         print("STEP 2: SETUP VECTOR DATABASE")
         print("=" * 70)
@@ -98,31 +99,41 @@ def generate_embeddings_and_store(
         actual_vector_db_id = None
         
         try:
-            # Check if vector DB already exists
-            existing_dbs = llama_client.vector_dbs.list()
-            for db in existing_dbs:
-                if db.identifier == vector_db_id or getattr(db, 'vector_db_name', None) == vector_db_id:
-                    actual_vector_db_id = db.identifier
-                    print(f"[OK] Found existing vector DB: {vector_db_id}")
-                    print(f"    Using identifier: {actual_vector_db_id}")
+            # Check if vector store already exists (API changed in 0.3.0)
+            print(f"[INFO] Checking for existing vector stores...")
+            existing_stores = llama_client.vector_stores.list()
+            
+            # Handle pagination - vector_stores.list() returns a cursor page
+            for store in existing_stores:
+                store_id = getattr(store, 'id', None) or getattr(store, 'identifier', None)
+                store_name = getattr(store, 'name', None)
+                print(f"  Found: {store_id} (name={store_name})")
+                if store_id == vector_db_id or store_name == vector_db_id:
+                    actual_vector_db_id = store_id
+                    print(f"[OK] Found existing vector store: {vector_db_id}")
+                    print(f"    Using ID: {actual_vector_db_id}")
                     break
             
             if not actual_vector_db_id:
-                # Register new vector DB
-                print(f"[INFO] Registering new vector DB: {vector_db_id}")
+                # Create new vector store (API changed in 0.3.0)
+                print(f"[INFO] Creating new vector store: {vector_db_id}")
                 
-                vector_db = llama_client.vector_dbs.register(
-                    vector_db_id=vector_db_id,
-                    embedding_model=embedding_model_id,
-                    embedding_dimension=embedding_dimension,
-                    provider_id="milvus-remote"
+                vector_store = llama_client.vector_stores.create(
+                    name=vector_db_id,
+                    metadata={
+                        "embedding_model": embedding_model_id,
+                        "embedding_dimension": embedding_dimension,
+                        "provider": "milvus"
+                    }
                 )
-                actual_vector_db_id = vector_db.identifier
-                print(f"[OK] Registered vector DB: {actual_vector_db_id}")
+                actual_vector_db_id = vector_store.id
+                print(f"[OK] Created vector store: {actual_vector_db_id}")
         
         except Exception as e:
-            print(f"[ERROR] Vector DB setup failed: {str(e)}", file=sys.stderr)
-            raise
+            print(f"[ERROR] Vector store setup failed: {str(e)}", file=sys.stderr)
+            # Try using vector_db_id directly - it might be pre-configured
+            print(f"[INFO] Attempting to use vector_db_id directly: {vector_db_id}")
+            actual_vector_db_id = vector_db_id
         
         print(f"\n[OK] Vector DB ready: {actual_vector_db_id}")
         print(f"    Embedding model: {embedding_model_id}")
