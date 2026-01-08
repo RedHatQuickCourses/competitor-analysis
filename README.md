@@ -258,16 +258,7 @@ Your workbench will open with the GitHub repository pre-cloned at:
 
 #### Run Query Notebooks
 
-Open and run the pre-built notebooks:
-
-| Name | Description |
-| :--- | :--- |
-| 1-maas-test | Basic Testing of MaaS remote inference |
-| 2-llamastack-test-basic | Basic Testing of Llamastack server set up. Llamastack sends the query to the remote inference end point running on MaaS |
-| 3-simple-rag | A notebook that demonstrates a simple RAG pipeline, where the vector database is queried (similarity search) and the relevant chunks are fed to the LLM as context, along with a system prompt. The LLM responds with a concise summary as response. |
-| 4-agentic-rag | A notebook that demonstrates Llamastack agents. The Agents API provides a high level wrapper around the query and LLM calling workflow and simplifies the RAG process. |
-| 5-real-time-search| We demonstrate how to use the in-built Tavily search agent to respond to queries requiring real-time data fetching. |
-| 6-react-agent | Llamastack ReAct Agent with multi-tool workflow (Yahoo finance tool calling) |
+Open and run the pre-built notebooks. See the `README.md` file in the notebooks repo for details on the notebooks.
 
 ## Customization
 

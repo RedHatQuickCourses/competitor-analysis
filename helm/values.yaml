@@ -362,7 +362,7 @@ notebook:
   # This will be automatically cloned after the workbench starts
   gitRepo:
     enabled: true
-    repository: https://github.com/rsriniva/competitor-analysis-notebooks.git  # Change to your repo
+    repository: https://github.com/RedHatQuickCourses/competitor-analysis.git  # Change to your repo
     revision: main  # Branch, tag, or commit SHA
     mountPath: /opt/app-root/src/competitor-analysis  # Where to clone the repo
   

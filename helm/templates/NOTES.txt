@@ -47,7 +47,7 @@ Release:       {{ .Release.Name }}
 {{- end }}
 
 ✅ Pipeline Definition
-   - Location: helm/competitor-analysis/pipelines/pipeline.yaml
+   - Location: kfp/pipeline.yaml
    - Status: Ready for manual import via RHOAI UI
 
 {{- if .Values.notebook.enabled }}
@@ -154,7 +154,7 @@ The following have been automatically configured:
    a. Open RHOAI Dashboard
    b. Navigate to: Data Science Pipelines
    c. Click: "Import pipeline"
-   d. Upload file: helm/competitor-analysis/pipelines/pipeline.yaml
+   d. Upload file: kfp/pipeline.yaml
    e. Pipeline name: document-ingestion-pipeline
    f. Description: Document ingestion pipeline - PDF to vector embeddings
    g. Click: "Import pipeline"
@@ -176,9 +176,7 @@ The following have been automatically configured:
    {{- if .Values.notebook.enabled }}
    
    Open the workbench and run the notebooks in {{ .Values.notebook.gitRepo.mountPath }}
-   {{- else }}
-   
-   Upload and run: helm/competitor-analysis/notebooks/competitor-analysis.ipynb
+
    {{- end }}
 
 {{- if and .Values.notebook.enabled .Values.notebook.gitRepo.enabled }}
@@ -253,17 +251,6 @@ helm uninstall {{ .Release.Name }} -n {{ include "competitor-analysis.namespace"
 oc delete namespace {{ include "competitor-analysis.namespace" . }}
 
 ================================================================================
-  📚 Documentation
-================================================================================
-
-- Chart README: helm/competitor-analysis/README.md
-- Workbench Guide: helm/competitor-analysis/docs/WORKBENCH-CONFIGURATION.md
-- Parameters Reference: helm/competitor-analysis/docs/PARAMETERS-REFERENCE.md
-- Pipeline Documentation: kfp/README.md
-- Query Scripts: scripts/README.md
-- Bucket Management: helm/competitor-analysis/BUCKET-MANAGEMENT.md
-
-================================================================================
   🐛 Troubleshooting
 ================================================================================
 
@@ -272,9 +259,5 @@ If pods are not starting:
 2. Check logs: oc logs <pod-name> -n {{ include "competitor-analysis.namespace" . }}
 3. Verify storage class is available: oc get sc
 
-For support, check the project documentation or contact the AI team.
-
-================================================================================
-Happy RAG building! 🚀
-================================================================================
+For support, open a GitHub issue in the repo.
 
