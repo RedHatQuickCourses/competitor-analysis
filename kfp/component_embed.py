@@ -174,10 +174,14 @@ def generate_embeddings_and_store(
         
         print(f"\n[OK] Downloaded {len(markdown_files)} markdown files")
         
-        # Step 4: Generate embeddings and store in Milvus
+        # Step 4: Generate embeddings using legacy rag_tool.insert() API
+        # The OpenAI Files API doesn't properly embed into Milvus, so we use the legacy API
         print(f"\n{'=' * 70}")
-        print("STEP 4: GENERATE EMBEDDINGS AND STORE")
+        print("STEP 4: GENERATE EMBEDDINGS (using rag_tool.insert)")
         print("=" * 70)
+        print(f"  Using legacy rag_tool.insert() API for direct Milvus embedding")
+        print(f"  Vector DB ID: {actual_vector_db_id}")
+        print(f"  Chunk size: {chunk_size} tokens")
         
         successful = 0
         failed = 0
@@ -197,7 +201,7 @@ def generate_embeddings_and_store(
                 
                 print(f"  Content: {len(content)} characters")
                 
-                # Create Document object
+                # Create Document object for rag_tool
                 document = Document(
                     document_id=md_file['name'],
                     content=content,
@@ -209,19 +213,34 @@ def generate_embeddings_and_store(
                     }
                 )
                 
-                # Generate embeddings and insert into Milvus via LlamaStack
-                print(f"  Generating embeddings...")
-                llama_client.tool_runtime.rag_tool.insert(
-                    documents=[document],
-                    vector_db_id=actual_vector_db_id,
-                    chunk_size_in_tokens=chunk_size
-                )
+                # Use legacy rag_tool.insert() API - this directly embeds into Milvus
+                print(f"  Generating embeddings via rag_tool.insert()...")
                 
-                print(f"  [OK] Successfully embedded and stored")
-                successful += 1
+                try:
+                    llama_client.tool_runtime.rag_tool.insert(
+                        documents=[document],
+                        vector_db_id=actual_vector_db_id,
+                        chunk_size_in_tokens=chunk_size
+                    )
+                    print(f"  [OK] Successfully embedded and stored in Milvus")
+                    successful += 1
+                    
+                except Exception as insert_error:
+                    error_msg = str(insert_error)
+                    print(f"  [ERROR] rag_tool.insert() failed: {error_msg}", file=sys.stderr)
+                    
+                    # Check if it's an API compatibility issue
+                    if "not found" in error_msg.lower() or "404" in error_msg:
+                        print(f"  [DEBUG] Vector DB '{actual_vector_db_id}' may not exist or has wrong ID format", file=sys.stderr)
+                    
+                    import traceback
+                    traceback.print_exc(file=sys.stderr)
+                    failed += 1
                 
             except Exception as e:
                 print(f"  [ERROR] {str(e)}", file=sys.stderr)
+                import traceback
+                traceback.print_exc(file=sys.stderr)
                 failed += 1
                 continue
         
@@ -235,6 +254,19 @@ def generate_embeddings_and_store(
         print(f"Embedding model: {embedding_model_id}")
         print(f"Chunk size: {chunk_size} tokens")
         print("=" * 70)
+        
+        # FAIL THE PIPELINE if there were any failures
+        if failed > 0:
+            error_msg = f"PIPELINE FAILED: {failed} out of {len(markdown_files)} files failed to embed"
+            print(f"\n[FATAL ERROR] {error_msg}", file=sys.stderr)
+            raise RuntimeError(error_msg)
+        
+        if successful == 0:
+            error_msg = "PIPELINE FAILED: No files were successfully embedded"
+            print(f"\n[FATAL ERROR] {error_msg}", file=sys.stderr)
+            raise RuntimeError(error_msg)
+        
+        print(f"\n[SUCCESS] All {successful} files embedded successfully!")
         
     except Exception as e:
         print(f"\n[FATAL ERROR] {str(e)}", file=sys.stderr)

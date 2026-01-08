@@ -77,7 +77,7 @@ Log in to the Red Hat Demo Platform (RHDP) and order this catalog item which con
 
 You can also use your own custom OpenShift cluster and install the RHOAI 3.0 operator and its pre-requisites by following the product documentation. You will need cluster admin rights to run the hands-on lab instructions. HW sizing options to match the tested configuration:
 
-* Single Node OpenShift (SNO) (AWS g6.4xlarge) or equivalent
+* Single Node OpenShift (SNO) (AWS g6.8xlarge) or equivalent:
 	* CPU Cores - 32
 	* Memory - 128GB
 	* Disk - 200GB
@@ -288,7 +288,7 @@ helm upgrade competitor-analysis ./helm \
 
 ### Updating Notebooks
 
-Clone the GitHub repo containing the notebooks (https://github.com/rsriniva/competitor-analysis-notebooks), and customize it if needed.
+Clone the GitHub repo containing the notebooks (https://github.com/RedHatQuickCourses/competitor-analysis-notebooks), and customize it if needed.
 
 Change the `notebook.gitRepo.repository` value in `helm/values.yaml` to point to the newly cloned repo with your custom notebooks.
 
@@ -380,7 +380,7 @@ oc logs -n competitor-analysis -l job-name=competitor-analysis-workbench-clone-r
 oc exec -n competitor-analysis \
   $(oc get pods -l notebook-name=competitor-analysis-workbench -o name) \
   -c competitor-analysis-workbench -- \
-  git clone https://github.com/rsriniva/competitor-analysis.git /opt/app-root/src/competitor-analysis
+  git clone https://github.com/RedHatQuickCourses/competitor-analysis.git /opt/app-root/src/competitor-analysis
 ```
 
 ### Helm Install Timeout

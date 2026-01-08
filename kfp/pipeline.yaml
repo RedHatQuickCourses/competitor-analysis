@@ -266,9 +266,13 @@ deploymentSpec:
           \      print(f\"  [OK] Downloaded\")\n\n        if len(markdown_files) ==\
           \ 0:\n            print(\"\\n[WARNING] No markdown files found!\")\n   \
           \         return\n\n        print(f\"\\n[OK] Downloaded {len(markdown_files)}\
-          \ markdown files\")\n\n        # Step 4: Generate embeddings and store in\
-          \ Milvus\n        print(f\"\\n{'=' * 70}\")\n        print(\"STEP 4: GENERATE\
-          \ EMBEDDINGS AND STORE\")\n        print(\"=\" * 70)\n\n        successful\
+          \ markdown files\")\n\n        # Step 4: Generate embeddings using legacy\
+          \ rag_tool.insert() API\n        # The OpenAI Files API doesn't properly\
+          \ embed into Milvus, so we use the legacy API\n        print(f\"\\n{'='\
+          \ * 70}\")\n        print(\"STEP 4: GENERATE EMBEDDINGS (using rag_tool.insert)\"\
+          )\n        print(\"=\" * 70)\n        print(f\"  Using legacy rag_tool.insert()\
+          \ API for direct Milvus embedding\")\n        print(f\"  Vector DB ID: {actual_vector_db_id}\"\
+          )\n        print(f\"  Chunk size: {chunk_size} tokens\")\n\n        successful\
           \ = 0\n        failed = 0\n\n        for idx, md_file in enumerate(markdown_files,\
           \ 1):\n            print(f\"\\n[{idx}/{len(markdown_files)}] Processing:\
           \ {md_file['name']}\")\n\n            try:\n                # Read markdown\
@@ -277,30 +281,48 @@ deploymentSpec:
           \ == 0:\n                    print(f\"  [SKIP] Empty file\")\n         \
           \           failed += 1\n                    continue\n\n              \
           \  print(f\"  Content: {len(content)} characters\")\n\n                #\
-          \ Create Document object\n                document = Document(\n       \
-          \             document_id=md_file['name'],\n                    content=content,\n\
+          \ Create Document object for rag_tool\n                document = Document(\n\
+          \                    document_id=md_file['name'],\n                    content=content,\n\
           \                    mime_type=\"text/markdown\",\n                    metadata={\n\
           \                        \"source\": md_file['object_name'],\n         \
           \               \"bucket\": markdown_bucket,\n                        \"\
           filename\": md_file['name']\n                    }\n                )\n\n\
-          \                # Generate embeddings and insert into Milvus via LlamaStack\n\
-          \                print(f\"  Generating embeddings...\")\n              \
-          \  llama_client.tool_runtime.rag_tool.insert(\n                    documents=[document],\n\
-          \                    vector_db_id=actual_vector_db_id,\n               \
-          \     chunk_size_in_tokens=chunk_size\n                )\n\n           \
-          \     print(f\"  [OK] Successfully embedded and stored\")\n            \
-          \    successful += 1\n\n            except Exception as e:\n           \
-          \     print(f\"  [ERROR] {str(e)}\", file=sys.stderr)\n                failed\
-          \ += 1\n                continue\n\n        print(f\"\\n{'=' * 70}\")\n\
-          \        print(\"SUMMARY\")\n        print(\"=\" * 70)\n        print(f\"\
-          Markdown files processed: {len(markdown_files)}\")\n        print(f\"Successfully\
-          \ embedded: {successful}\")\n        print(f\"Failed: {failed}\")\n    \
-          \    print(f\"Vector DB: {actual_vector_db_id}\")\n        print(f\"Embedding\
-          \ model: {embedding_model_id}\")\n        print(f\"Chunk size: {chunk_size}\
-          \ tokens\")\n        print(\"=\" * 70)\n\n    except Exception as e:\n \
-          \       print(f\"\\n[FATAL ERROR] {str(e)}\", file=sys.stderr)\n       \
-          \ import traceback\n        traceback.print_exc(file=sys.stderr)\n     \
-          \   raise\n\n"
+          \                # Use legacy rag_tool.insert() API - this directly embeds\
+          \ into Milvus\n                print(f\"  Generating embeddings via rag_tool.insert()...\"\
+          )\n\n                try:\n                    llama_client.tool_runtime.rag_tool.insert(\n\
+          \                        documents=[document],\n                       \
+          \ vector_db_id=actual_vector_db_id,\n                        chunk_size_in_tokens=chunk_size\n\
+          \                    )\n                    print(f\"  [OK] Successfully\
+          \ embedded and stored in Milvus\")\n                    successful += 1\n\
+          \n                except Exception as insert_error:\n                  \
+          \  error_msg = str(insert_error)\n                    print(f\"  [ERROR]\
+          \ rag_tool.insert() failed: {error_msg}\", file=sys.stderr)\n\n        \
+          \            # Check if it's an API compatibility issue\n              \
+          \      if \"not found\" in error_msg.lower() or \"404\" in error_msg:\n\
+          \                        print(f\"  [DEBUG] Vector DB '{actual_vector_db_id}'\
+          \ may not exist or has wrong ID format\", file=sys.stderr)\n\n         \
+          \           import traceback\n                    traceback.print_exc(file=sys.stderr)\n\
+          \                    failed += 1\n\n            except Exception as e:\n\
+          \                print(f\"  [ERROR] {str(e)}\", file=sys.stderr)\n     \
+          \           import traceback\n                traceback.print_exc(file=sys.stderr)\n\
+          \                failed += 1\n                continue\n\n        print(f\"\
+          \\n{'=' * 70}\")\n        print(\"SUMMARY\")\n        print(\"=\" * 70)\n\
+          \        print(f\"Markdown files processed: {len(markdown_files)}\")\n \
+          \       print(f\"Successfully embedded: {successful}\")\n        print(f\"\
+          Failed: {failed}\")\n        print(f\"Vector DB: {actual_vector_db_id}\"\
+          )\n        print(f\"Embedding model: {embedding_model_id}\")\n        print(f\"\
+          Chunk size: {chunk_size} tokens\")\n        print(\"=\" * 70)\n\n      \
+          \  # FAIL THE PIPELINE if there were any failures\n        if failed > 0:\n\
+          \            error_msg = f\"PIPELINE FAILED: {failed} out of {len(markdown_files)}\
+          \ files failed to embed\"\n            print(f\"\\n[FATAL ERROR] {error_msg}\"\
+          , file=sys.stderr)\n            raise RuntimeError(error_msg)\n\n      \
+          \  if successful == 0:\n            error_msg = \"PIPELINE FAILED: No files\
+          \ were successfully embedded\"\n            print(f\"\\n[FATAL ERROR] {error_msg}\"\
+          , file=sys.stderr)\n            raise RuntimeError(error_msg)\n\n      \
+          \  print(f\"\\n[SUCCESS] All {successful} files embedded successfully!\"\
+          )\n\n    except Exception as e:\n        print(f\"\\n[FATAL ERROR] {str(e)}\"\
+          , file=sys.stderr)\n        import traceback\n        traceback.print_exc(file=sys.stderr)\n\
+          \        raise\n\n"
         image: quay.io/rsriniva/kfp-docling:latest
 pipelineInfo:
   description: 'Unified pipeline: PDF -> Markdown -> Embeddings -> Milvus (stateless,
